@@ -13,11 +13,13 @@
 <body>
 
     <main>
-
-        <h1>United States Education Attainment</h1>
-        <h3>Percentage of adults age 25 and older with a bachelor's degree or higher (2010-2014)</h3>
-
+        <h1 id="title">United States Education Attainment</h1>
+        <h3 id="description">Percentage of adults age 25 and older with a bachelor's degree or higher (2010-2014)</h3>
     </main>
+
+    <div id="loadingPanel">
+        <h1>Loading<span id="dot1">.</span><span id="dot2">.</span><span id="dot3">.</span></h1>
+    </div>
 
 
     <script>
@@ -26,6 +28,7 @@
         }
 
         function getData() {
+
             var promise1 = new Promise((resolve, reject) => {
                 var url = 'https://raw.githubusercontent.com/no-stack-dub-sack/testable-projects-fcc/master/src/data/choropleth_map/for_user_education.json';
                 var request = new XMLHttpRequest();
@@ -84,11 +87,12 @@
                     .rangeRound([600, 860]);
 
                 var color = d3.scaleThreshold()
-                    .domain(d3.range(2, 50, (50-1)/8))
+                    .domain(d3.range(2, 50, (50 - 1) / 8))
                     .range(d3.schemeGreens[8]);
 
 
                 var g = svg.append("g")
+                    .attr("id", "legend")
                     .attr("class", "key")
                     .attr("transform", "translate(0,40)");
 
@@ -116,32 +120,55 @@
 
                 g.call(d3.axisBottom(x)
                     .tickSize(13)
-                    .tickFormat(function(x) { return Math.round(x) + '%' })
+                    .tickFormat(function (x) { return Math.round(x) + '%' })
                     .tickValues(color.domain()))
                     .select(".domain")
                     .remove();
 
 
                 svg.append("g")
-                    .attr("class", "counties")
                     .selectAll("path")
                     .data(topojson.feature(us, us.objects.counties).features)
                     .enter().append("path")
                     .attr("class", "county")
-
-                    .attr("fill", function (d) { 
-
-                        console.log(color(education.get(d.id)));
-                        if (!education.get(d.id)){
-                            debugger;
-                        }
+                    .attr("data-fips", x => x.id)
+                    .attr("data-education", function (d) {
+                        return d.educationOrHigher = education.get(d.id);
+                    })
+                    .attr("fill", function (d) {
                         return color(d.educationOrHigher = education.get(d.id));
-                     })
+                    })
                     .attr("d", path)
                     .append("title")
                     .text(function (d) { return d.educationOrHigher + "%"; });
 
-   
+                var loadingPanel = document.getElementById("loadingPanel");
+                loadingPanel.style.display = 'none';
+
+                d3.selectAll("path")
+                    .on("mouseenter", function (actual, i) {
+                        var edu = educationData.filter(x => x.fips == actual.id)[0];
+                        var tooltip = d3.select("main")
+                            .append("div")
+                            .attr("id", "tooltip")
+                            .attr("data-education", edu.bachelorsOrHigher)
+                            .attr("class", "tooltip");
+
+                        tooltip.append("p")
+                            .text(`${edu.area_name} ${edu.state}`);
+
+                        tooltip.append("p")
+                            .text(`${edu.bachelorsOrHigher}%`);
+                    })
+                    .on("mousemove", function () {
+                        d3.select("#tooltip")
+                            .style("top", (event.pageY + 25) + "px")
+                            .style("left", (event.pageX + 25) + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select("#tooltip").remove();
+                    });
+
             }
 
         }
@@ -151,7 +178,6 @@
     <script src="d3.min.js" charset="utf-8"></script>
     <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
     <script src="https://d3js.org/topojson.v2.min.js"></script>
-
 
 </body>
 
